@@ -1,0 +1,59 @@
+<html>
+<head>
+  <script type='text/javascript' src='openseadragon.min.js'></script>
+
+
+  <script type='text/javascript'>
+
+  var Z = 0;
+
+  window.onload = function() {
+
+
+
+    viewer = OpenSeadragon({
+        id:            'viewer',
+        prefixUrl:     "images/",
+        navigatorSizeRatio: 0.25,
+        maxZoomPixelRatio: 10,
+        showNavigationControl: false,
+        imageLoaderLimit: 3,
+        tileSources:   {
+            height: 8192,//#512*256,
+            width:  8192,//512*256,
+            tileSize: 512,
+            minLevel: 0,
+            maxLevel: 4,
+            getTileUrl: function( level, x, y ){
+
+                level = this.maxLevel - level;
+
+                // return "http://s3.amazonaws.com/com.modestmaps.bluemarble/" +
+                        // (level-8) + "-r" + y + "-c" + x + ".jpg";
+
+                x = x*512;
+                y = y*512;
+
+                return "http://localhost:3003/data/?datapath=/Volumes/DATA1/P7_Additions_Renuka_Backup/mojo/&x="+x+"&y="+y+"&z="+Z+"&w="+level+"&size=512,512,1"
+            }
+        }
+        // debugMode: true
+      });
+
+  }
+
+  window.onkeypress = function() {
+
+    Z+=1;
+    viewer.world.resetItems();
+
+  }
+
+
+  </script>
+</head>
+
+<body>
+<div id='viewer' style='width:100%;height:100%'></div>
+</body>
+</html>
