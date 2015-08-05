@@ -7,8 +7,157 @@
 
   var Z = 0;
 
+  var server_name = '';
+  var data_path = '';
+  var g_width = 0;
+  var g_height = 0;
+  var g_z = 0;
+
+
+
+  function parse_args() {
+
+    // from http://stackoverflow.com/a/7826782/1183453
+    var args = document.location.search.substring(1).split('&');
+    argsParsed = {};
+    for (var i=0; i < args.length; i++)
+    {
+        arg = unescape(args[i]);
+
+        if (arg.length == 0) {
+          continue;
+        }
+
+        if (arg.indexOf('=') == -1)
+        {
+            argsParsed[arg.replace(new RegExp('/$'),'').trim()] = true;
+        }
+        else
+        {
+            kvp = arg.split('=');
+            argsParsed[kvp[0].trim()] = kvp[1].replace(new RegExp('/$'),'').trim();
+        }
+    }
+
+    return argsParsed;
+
+  };
+
   window.onload = function() {
 
+
+    var args = parse_args();
+
+    server_name = args['server'];
+    data_path = args['data_path'];
+    g_width = parseInt(args['width'],10);
+    g_height = g_width;
+    g_z = args['z'];
+
+    console.log(args)
+
+    // var ts = [];
+    // for(var i=0; i<1; i++) {
+
+    //   var obj = {
+    //         height: 114688,//#512*256,
+    //         width:  131072,//512*256,
+    //         tileSize: 512,
+    //         minLevel: 0,
+    //         maxLevel: 4,
+    //         layer: i,
+
+    //         getTileUrl: function( level, x, y ){
+
+    //             level = this.maxLevel - level;
+
+    //             // return "http://s3.amazonaws.com/com.modestmaps.bluemarble/" +
+    //                     // (level-8) + "-r" + y + "-c" + x + ".jpg";
+
+    //             x = x*512;
+    //             y = y*512;
+                
+    //             return "http://connectome.rc.fas.harvard.edu/legacy/data/?datapath=/n/www_lichtmanfs2/Susan_R_dataset_aligned/&start="+x+","+y+","+this.layer+"&mip="+level+"&size=512,512,1"
+    //         }
+    //     };
+
+    //     ts.push(obj);
+    // }
+
+    // console.log(ts)
+
+
+    // var ts = [];
+    // for(var i=0; i<1; i++) {
+
+    //   var obj = {
+    //         height: 5120,//#512*256,
+    //         width:  5120,//512*256,
+    //         tileSize: 512,
+    //         minLevel: 0,
+    //         maxLevel: 4,
+    //         layer: i,
+
+    //         getTileUrl: function( level, x, y ){
+
+    //             level = this.maxLevel - level;
+
+    //             // return "http://s3.amazonaws.com/com.modestmaps.bluemarble/" +
+    //                     // (level-8) + "-r" + y + "-c" + x + ".jpg";
+
+    //             x = x*512;
+    //             y = y*512;
+                
+    //             return "http://monster.krash.net:22333/data/?datapath=/media/DATA/mojo_5120x5120/mojo/&start="+x+","+y+","+this.layer+"&mip="+level+"&size=512,512,1"
+    //         }
+    //     };
+
+    //     ts.push(obj);
+    // }
+
+    ts = {
+            height: g_height,//#512*256,
+            width:  g_width,//512*256,
+            tileSize: 512,
+            minLevel: 0,
+            maxLevel: Math.log2(g_width/512),
+
+            getTileUrl: function( level, x, y ){
+
+                level = this.maxLevel - level;
+
+                // return "http://s3.amazonaws.com/com.modestmaps.bluemarble/" +
+                        // (level-8) + "-r" + y + "-c" + x + ".jpg";
+
+                x = x*this.tileSize;
+                y = y*this.tileSize;
+                
+                return "http://"+server_name+"/data/?datapath="+data_path+"&start="+x+","+y+","+g_z+"&mip="+level+"&size="+this.tileSize+","+this.tileSize+",1"
+            }
+        };
+
+    ts_seg = {
+            height: g_height,//#512*256,
+            width:  g_width,//512*256,
+            tileSize: 512,
+            minLevel: 0,
+            maxLevel: Math.log2(g_width/512),
+
+            getTileUrl: function( level, x, y ){
+
+                level = this.maxLevel - level;
+
+                // return "http://s3.amazonaws.com/com.modestmaps.bluemarble/" +
+                        // (level-8) + "-r" + y + "-c" + x + ".jpg";
+
+                x = x*this.tileSize;
+                y = y*this.tileSize;
+                
+                return "http://"+server_name+"/data/?datapath="+data_path+"&start="+x+","+y+","+g_z+"&mip="+level+"&size="+this.tileSize+","+this.tileSize+",1&segmentation=y"
+            }
+        };
+
+    // console.log(ts)
 
 
     viewer = OpenSeadragon({
@@ -18,34 +167,106 @@
         maxZoomPixelRatio: 10,
         showNavigationControl: false,
         imageLoaderLimit: 3,
-        tileSources:   {
-            height: 8192,//#512*256,
-            width:  8192,//512*256,
-            tileSize: 512,
-            minLevel: 0,
-            maxLevel: 4,
-            getTileUrl: function( level, x, y ){
+        animationTime: 0,
+        // sequenceMode: true,
+        // tileSources: ts,
+        tileSources:   [ts
+//         {
+//             height: 1024,//#512*256,
+//             width:  1024,//512*256,
+//             tileSize: 512,
+//             minLevel: 0,
+//             maxLevel: 1,
 
-                level = this.maxLevel - level;
+//             getTileUrl: function( level, x, y ){
 
-                // return "http://s3.amazonaws.com/com.modestmaps.bluemarble/" +
-                        // (level-8) + "-r" + y + "-c" + x + ".jpg";
+//                 level = this.maxLevel - level;
 
-                x = x*512;
-                y = y*512;
+//                 // return "http://s3.amazonaws.com/com.modestmaps.bluemarble/" +
+//                         // (level-8) + "-r" + y + "-c" + x + ".jpg";
 
-                return "http://localhost:3003/data/?datapath=/Volumes/DATA1/P7_Additions_Renuka_Backup/mojo/&x="+x+"&y="+y+"&z="+Z+"&w="+level+"&size=512,512,1"
-            }
-        }
+//                 x = x*512;
+//                 y = y*512;
+//                 Z=1;
+//                 return "http://connectome.rc.fas.harvard.edu/legacy/data/?datapath=/n/www_lichtmanfs2/ac3x75/mojo/&start="+x+","+y+","+Z+"&mip="+level+"&size=512,512,1"
+//             }
+//         },
+
+// {
+//             height: 1024,//#512*256,
+//             width:  1024,//512*256,
+//             tileSize: 512,
+//             minLevel: 0,
+//             maxLevel: 1,
+
+//             getTileUrl: function( level, x, y ){
+
+//                 level = this.maxLevel - level;
+
+//                 // return "http://s3.amazonaws.com/com.modestmaps.bluemarble/" +
+//                         // (level-8) + "-r" + y + "-c" + x + ".jpg";
+
+//                 x = x*512;
+//                 y = y*512;
+//                 Z=2;
+//                 return "http://connectome.rc.fas.harvard.edu/legacy/data/?datapath=/n/www_lichtmanfs2/ac3x75/mojo/&start="+x+","+y+","+Z+"&mip="+level+"&size=512,512,1"
+//             }
+//         },
+        ]
         // debugMode: true
       });
+
+
+
+    viewer2 = OpenSeadragon({
+        id:            'viewer2',
+        prefixUrl:     "images/",
+        navigatorSizeRatio: 0.25,
+        maxZoomPixelRatio: 10,
+        showNavigationControl: false,
+        imageLoaderLimit: 3,
+        animationTime: 0,
+        // sequenceMode: true,
+        // tileSources: ts,
+        tileSources:   [ts_seg
+        ]
+        // debugMode: true
+      });
+
+    viewer2.addHandler('pan', propagate_viewport);
+    viewer2.addHandler('zoom', propagate_viewport);
+
+  }
+
+  function propagate_viewport() {
+
+    // var center = viewer2.
+    // return;
+    // console.log('propppp')
+    
+    // center = new OpenSeadragon.Point(parseFloat(center[0]), parseFloat(center[1]));
+    viewer.viewport.panTo(viewer2.viewport.getCenter(), true);
+    // center = null;
+
+    // zoom = parseFloat(zoom);
+    viewer.viewport.zoomTo(viewer2.viewport.getZoom(), null, true);
+    // this._zoom = null;
+
+
+
 
   }
 
   window.onkeypress = function() {
 
-    Z+=1;
-    viewer.world.resetItems();
+    // setTimeout(function() {
+
+
+    //   Z+=1;
+    //   viewer.goToPage(Z);
+
+
+    // }, 100);
 
   }
 
@@ -54,6 +275,7 @@
 </head>
 
 <body>
-<div id='viewer' style='width:100%;height:100%'></div>
+<div id='viewer' style='position:absolute;top:0px;left:0px;width:100%;height:100%'></div>
+<div id='viewer2' style='position:absolute;top:0px;left:0px;z-index:1000;width:100%;height:100%;opacity:0.5;'></div>
 </body>
 </html>
