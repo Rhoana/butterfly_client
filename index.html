@@ -148,7 +148,7 @@
             width:  g_width,//512*256,
             tileSize: 512,
             minLevel: 0,
-            maxLevel: Math.log2(g_width/512),
+            maxLevel: Math.ceil(Math.log2(g_width/512)),
 
             getTileUrl: function( level, x, y ){
 
@@ -171,7 +171,7 @@
             width:  g_width,//512*256,
             tileSize: 512,
             minLevel: 0,
-            maxLevel: Math.log2(g_width/512),
+            maxLevel: Math.ceil(Math.log2(g_width/512)),
 
             getTileUrl: function( level, x, y ){
 
