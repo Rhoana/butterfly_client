@@ -13,6 +13,7 @@
   var g_width = 0;
   var g_height = 0;
   var g_z = 0;
+  var g_depth = 0;
 
   var ready_for_next_slice = false;
 
@@ -44,9 +45,36 @@
 
   };
 
+  function create_ts(z) {
+      var ts = {
+                height: g_height,//#512*256,
+                width:  g_width,//512*256,
+                tileSize: 512,
+                minLevel: 0,
+                maxLevel: Math.ceil(Math.log2(g_width/512)),
+
+                getTileUrl: function( level, x, y ){
+
+                    level = this.maxLevel - level;
+
+                    // return "http://s3.amazonaws.com/com.modestmaps.bluemarble/" +
+                    // (level-8) + "-r" + y + "-c" + x + ".jpg";
+
+                    x = x*this.tileSize;
+                    y = y*this.tileSize;
+
+                    return "http://"+server_name+"/data/?datapath="+data_path+"&start="+x+","+y+","+z+"&mip="+level+"&size="+this.tileSize+","+this.tileSize+",1"
+                }
+      }
+      return ts;
+
+  }
 
   function create_viewer(page, visible, no_seg) {
 
+      //console.log("page is: " + page);
+      if ((page < 0) || (page >= g_depth))
+          return;
 
       // create dom element
       var container_id = 'viewer_'+page;
@@ -59,7 +87,7 @@
 
       $('#viewers').append('<div id="'+container_id+'" class="viewers" style="'+style+'"></div>');
 
-      var ts = images[page];
+      var ts = create_ts(page);//images[page];
       // var ts2 = segmentations[page];
 
 
@@ -89,7 +117,8 @@
 
 
 
-          return [viewer, null];
+          //return [viewer, null];
+          return viewer;
 
 
   };
@@ -114,75 +143,134 @@
     data_path = args['data_path'];
     g_width = parseInt(args['width'],10);
     g_height = parseInt(args['height'],10);
-    g_z = 0//parseInt(args['z'],10);
+    g_depth = parseInt(args['depth'],10);
+    if ('z' in args) {
+        g_z = parseInt(args['z'],10);
+    }
+    else {
+        g_z = 0;
+    }
 
     // console.log(args)
 
-    images = [];
-    for(var i=0; i<917; i++) {
-
-        var ts = {
-            height: g_height,//#512*256,
-            width:  g_width,//512*256,
-            tileSize: 512,
-            minLevel: 0,
-            maxLevel: Math.log2(g_width/512),
-
-            getTileUrl: function( level, x, y ){
-
-                level = this.maxLevel - level;
-
-                // return "http://s3.amazonaws.com/com.modestmaps.bluemarble/" +
-                        // (level-8) + "-r" + y + "-c" + x + ".jpg";
-
-                x = x*this.tileSize;
-                y = y*this.tileSize;
-                
-                return "http://"+server_name+"/data/?datapath="+data_path+"&start="+x+","+y+","+g_z+"&mip="+level+"&size="+this.tileSize+","+this.tileSize+",1"
-            }
-        };
-
-        images.push(ts);
-
-    }
-
-
-    var viewers = create_viewer(g_z, true, true);
-    viewer = viewers[0];
+    viewer = create_viewer(g_z, true, true);
     // seg_viewer = viewers[1];
-    next_viewers = create_viewer(g_z+1, false, true);
+    if (g_z < g_depth - 1)
+        next_viewer = create_viewer(g_z+1, false, true, 1);
+    else
+        next_viewer = null;
+    
+    if (g_z > 0)
+        prev_viewer = create_viewer(g_z-1, false, true, -1);
+    else
+        prev_viewer = null;
+
 
 
   }
 
+  function onkey(e) {
 
-  function onkey() {
+      if (e.keyCode == 87) {
+          move(1);
+      } else if (e.keyCode == 83) {
+          move(-1);
+      }
 
-    if (!ready_for_next_slice) return;
+  };
 
-    ready_for_next_slice = false;
+  // Adapted from the mb project by dhaean
+  function move(sign) {
 
-    next_viewers[0].removeAllHandlers('tile-drawn');
+    if (g_z + 1*sign >= g_depth) {
+        // console.log('reached right end');
+        return;
+    } else if (g_z + 1*sign < 0) {
+        // console.log('reached left end');
+        return;
+    }
 
-    var container_id = 'viewer_'+g_z;
+    var old_container = '#viewer_'+g_z;
+    g_z += 1*sign;
+    var new_container = '#viewer_'+g_z;
 
-    var new_container_id = 'viewer_'+(g_z+1);
+    // 
+    //this._data_path = this._content[this._page].data_path;
 
-    next_viewers[0].viewport.panTo(viewer.viewport.getCenter());
-    next_viewers[0].viewport.zoomTo(viewer.viewport.getZoom());
+    if (sign > 0) {
+        // moving to next
 
-    $('#'+new_container_id).css('z-index','1');
+        // we destroyed the old previous viewer
+        if (prev_viewer) {
+            // this._prev_viewer.removeAllHandlers('pan');
+            // this._prev_viewer.removeAllHandlers('zoom');
+            prev_viewer.destroy();
+            // console.log('freeing previous viewer');
+        }
 
-    // delete old viewers
-    $('#'+container_id).css('z-index','0');
-    viewer.destroy();
-    
+        // the prev viewer is set to the current one
+        var old_viewer = viewer;
+        // old_viewer.removeAllHandlers('pan');
+        // old_viewer.removeAllHandlers('zoom');        
+        prev_viewer = viewer;
+        // this._prev_viewer.removeAllHandlers('pan');
+        // this._prev_viewer.removeAllHandlers('zoom');
 
-    g_z += 1;
+        // the current viewer is set to the next one
+        viewer = next_viewer;
 
-    viewer = next_viewers[0];
-    // seg_viewer = next_viewers[1];
-    next_viewers = create_viewer(g_z+1, false, true);
+        // this._viewer.addHandler('pan', this.propagate_viewport.bind(this));
+        // this._viewer.addHandler('zoom', this.propagate_viewport.bind(this));
+
+
+        // and the next viewer shall be a new one
+        if (g_z+1 >= g_depth) {
+            next_viewer = null;
+        } else {
+            // this._controller.request_meta_data(this._content[this._page+1]['data_path'])
+            next_viewer = create_viewer(g_z+1, false, true);
+        }
+
+    } else {
+        // moving to prev
+
+        // we destroy the old next viewer
+        if (next_viewer) {
+            // this._next_viewer.removeAllHandlers('pan');
+            // this._next_viewer.removeAllHandlers('zoom');      
+            next_viewer.destroy();
+            // console.log('freeing next viewer');
+        }
+
+        // the next viewer is set to the current one
+        var old_viewer = viewer;
+        // old_viewer.removeAllHandlers('pan');
+        // old_viewer.removeAllHandlers('zoom');          
+        next_viewer = viewer;
+        // this._next_viewer.removeAllHandlers('pan');
+        // this._next_viewer.removeAllHandlers('zoom'); 
+
+        // the current viewer is set to the previous one
+        viewer = prev_viewer;
+
+        // this._viewer.addHandler('pan', this.propagate_viewport.bind(this));
+        // this._viewer.addHandler('zoom', this.propagate_viewport.bind(this));
+
+
+        // and the previous viewer shall be a new one
+        if (g_z-1 < 0) {
+            prev_viewer = null;
+        } else {
+            prev_viewer = create_viewer(g_z-1, false, true);
+        }
+
+    }
+
+    viewer.viewport.panTo(old_viewer.viewport.getCenter(), true);
+    viewer.viewport.zoomTo(old_viewer.viewport.getZoom(), null, true);
+
+    $(new_container).css('z-index', 1);    
+    $(old_container).css('z-index', 0);
 
   }
 
